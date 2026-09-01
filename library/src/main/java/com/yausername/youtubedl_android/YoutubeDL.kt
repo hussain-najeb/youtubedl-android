@@ -237,17 +237,25 @@ object YoutubeDL {
             request.addOption("--no-cache-dir")
         }
 
-        val quickJsCli = File(
-            ffmpegPath!!.parentFile,
-            "libqjs-cli.so"
-        )
+        // This automatically makes Quick JS available at runtime without outside invocation,
+        // it's commented out but can be uncommented if you want to make it work off-rip on runtime.
 
-        if (quickJsCli.exists()) {
-            request.addOption(
-                "--js-runtimes",
-                "quickjs:${quickJsCli.absolutePath}"
-            )
-        }
+//        val quickJsCli = File(
+//            ffmpegPath!!.parentFile,
+//            "libqjs-cli.so"
+//        )
+//
+//        if (quickJsCli.exists()) {
+//            request.addOption(
+//                "--js-runtimes",
+//                "quickjs:${quickJsCli.absolutePath}"
+//            )
+//        }
+
+        // For curl_cffi and cffi, have something like "request.addOption("--impersonate", "chrome")".
+        // I will try to squash bugs as much as I can, I also suggest having this feature as "Cutting-Edge"
+        // or "Experimental" and ask users to report bugs, so it doesn't mess with anything working currently.
+        // As I stated in the PR, This feature is almost guaranteed to either not work or need extra work on x86.
 
         if (request.buildCommand().contains("libaria2c.so")) {
             request
@@ -283,9 +291,7 @@ object YoutubeDL {
             this["LD_LIBRARY_PATH"] = ENV_LD_LIBRARY_PATH
             this["SSL_CERT_FILE"] = ENV_SSL_CERT_FILE
             this["PATH"] =
-                System.getenv("PATH") + ":" +
-                        binDir!!.absolutePath + ":" +
-                        aria2cPath!!.parentFile!!.absolutePath
+                System.getenv("PATH") + ":" + binDir!!.absolutePath + ":" + aria2cPath!!.parentFile!!.absolutePath
             this["PYTHONHOME"] = ENV_PYTHONHOME
             this["OPENSSL_MODULES"] = "$ENV_PYTHONHOME/lib/ossl-modules"
             this["HOME"] = ENV_PYTHONHOME
