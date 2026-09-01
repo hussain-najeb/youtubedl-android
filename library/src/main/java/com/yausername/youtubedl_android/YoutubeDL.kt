@@ -282,10 +282,12 @@ object YoutubeDL {
         processBuilder.environment().apply {
             this["LD_LIBRARY_PATH"] = ENV_LD_LIBRARY_PATH
             this["SSL_CERT_FILE"] = ENV_SSL_CERT_FILE
-            this["PATH"] = System.getenv("PATH") + ":" + binDir!!.absolutePath + ":" + aria2cPath!!.parentFile!!.absolutePath
+            this["PATH"] =
+                System.getenv("PATH") + ":" +
+                        binDir!!.absolutePath + ":" +
+                        aria2cPath!!.parentFile!!.absolutePath
             this["PYTHONHOME"] = ENV_PYTHONHOME
-            this["OPENSSL_MODULES"] =
-                File(pythonDir, "usr/lib/ossl-modules").absolutePath
+            this["OPENSSL_MODULES"] = "$ENV_PYTHONHOME/lib/ossl-modules"
             this["HOME"] = ENV_PYTHONHOME
             this["TMPDIR"] = TMPDIR
         }
