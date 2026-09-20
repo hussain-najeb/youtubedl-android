@@ -48,11 +48,41 @@ object YoutubeDL {
         ENV_SSL_CERT_FILE = pythonDir.absolutePath + "/usr/lib/python3.14/site-packages/certifi/cacert.pem"
         ENV_PYTHONHOME = pythonDir.absolutePath + "/usr"
         TMPDIR = appContext.cacheDir.absolutePath
+        initFFmpeg(appContext, ffmpegDir)
         initPython(appContext, pythonDir)
         initAria2c(appContext, aria2cDir)
         init_ytdlp(appContext, ytdlpDir)
         initialized = true
     }
+
+    @Throws(YoutubeDLException::class)
+    private fun initFFmpeg(appContext: Context, ffmpegDir: File) {
+        val ffmpegLib = File(binDir, ffmpegLibName)
+        val ffmpegSize = ffmpegLib.length().toString()
+
+        if (!ffmpegDir.exists() || shouldUpdateFFmpeg(appContext, ffmpegSize)) {
+            FileUtils.deleteQuietly(ffmpegDir)
+            ffmpegDir.mkdirs()
+
+            try {
+                 unzip(ffmpegLib, ffmpegDir)
+            } catch (e: Exception) {
+                FileUtils.deleteQuietly(ffmpegDir)
+                throw YoutubeDLException("failed to initialize FFmpeg", e)
+            }
+
+            updateFFmpeg(appContext, ffmpegSize)
+        }
+    }
+
+    private fun shouldUpdateFFmpeg(appContext: Context, version: String): Boolean {
+        return version != SharedPrefsHelper[appContext, ffmpegLibVersion]
+    }
+
+    private fun updateFFmpeg(appContext: Context, version: String) {
+        update(appContext, ffmpegLibVersion, version)
+    }
+
 
     @Throws(YoutubeDLException::class)
     fun init_ytdlp(appContext: Context, ytdlpDir: File) {
@@ -389,6 +419,8 @@ object YoutubeDL {
     private const val pythonDirName = "python"
     private const val ffmpegDirName = "ffmpeg"
     private const val ffmpegBinName = "libffmpeg.so"
+    private const val ffmpegLibName = "libffmpeg.zip.so"
+    private const val ffmpegLibVersion = "ffmpegLibVersion"
     private const val aria2cDirName = "aria2c"
     private const val aria2cLibName = "libaria2.zip.so"
     private const val aria2cLibVersion = "aria2cLibVersion"
