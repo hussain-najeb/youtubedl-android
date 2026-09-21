@@ -23,6 +23,8 @@ object YoutubeDL {
     private var ENV_LD_LIBRARY_PATH: String? = null
     private var ENV_SSL_CERT_FILE: String? = null
     private var ENV_PYTHONHOME: String? = null
+    private var ENV_ARIA2_OPENSSL_CONF: String? = null
+    private var ENV_ARIA2_OPENSSL_MODULES: String? = null
     private var TMPDIR: String = ""
     private val idProcessMap = Collections.synchronizedMap(HashMap<String, Process>())
 
@@ -47,6 +49,10 @@ object YoutubeDL {
         binDir!!.absolutePath
         ENV_SSL_CERT_FILE = pythonDir.absolutePath + "/usr/lib/python3.14/site-packages/certifi/cacert.pem"
         ENV_PYTHONHOME = pythonDir.absolutePath + "/usr"
+        ENV_ARIA2_OPENSSL_CONF =
+            File(aria2cDir, "usr/etc/tls/openssl.cnf").absolutePath
+        ENV_ARIA2_OPENSSL_MODULES =
+            File(aria2cDir, "usr/lib/ossl-modules").absolutePath
         TMPDIR = appContext.cacheDir.absolutePath
         initFFmpeg(appContext, ffmpegDir)
         initPython(appContext, pythonDir)
@@ -151,18 +157,18 @@ object YoutubeDL {
             updateAria2c(appContext, aria2cSize)
         }
 
-        aria2cPath = File(aria2cDir, "usr/bin/aria2c")
+        aria2cPath = File(binDir, aria2cBinName)
         val aria2cBinary = aria2cPath!!
 
         if (!aria2cBinary.exists()) {
             throw YoutubeDLException(
-                "aria2c binary not found at ${aria2cBinary.absolutePath}"
+                "aria2c native executable not found at ${aria2cBinary.absolutePath}"
             )
         }
 
-        if (!aria2cBinary.setExecutable(true)) {
+        if (!aria2cBinary.canExecute()) {
             throw YoutubeDLException(
-                "failed to make aria2c executable at ${aria2cBinary.absolutePath}"
+                "aria2c native executable is not executable at ${aria2cBinary.absolutePath}"
             )
         }
     }
@@ -323,7 +329,8 @@ object YoutubeDL {
             this["PATH"] =
                 System.getenv("PATH") + ":" + binDir!!.absolutePath + ":" + aria2cPath!!.parentFile!!.absolutePath
             this["PYTHONHOME"] = ENV_PYTHONHOME
-            this["OPENSSL_MODULES"] = "$ENV_PYTHONHOME/lib/ossl-modules"
+            this["OPENSSL_CONF"] = ENV_ARIA2_OPENSSL_CONF
+            this["OPENSSL_MODULES"] = ENV_ARIA2_OPENSSL_MODULES
             this["HOME"] = ENV_PYTHONHOME
             this["TMPDIR"] = TMPDIR
         }
@@ -422,6 +429,7 @@ object YoutubeDL {
     private const val ffmpegLibName = "libffmpeg.zip.so"
     private const val ffmpegLibVersion = "ffmpegLibVersion"
     private const val aria2cDirName = "aria2c"
+    private const val aria2cBinName = "libaria2c.so"
     private const val aria2cLibName = "libaria2.zip.so"
     private const val aria2cLibVersion = "aria2cLibVersion"
     const val ytdlpDirName = "yt-dlp"
