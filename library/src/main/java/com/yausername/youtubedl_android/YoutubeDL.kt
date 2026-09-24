@@ -1,7 +1,10 @@
 package com.yausername.youtubedl_android
 
 import android.content.Context
+import android.os.Build
+import android.os.Process.sendSignal
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.yausername.youtubedl_android.mapper.VideoInfo
 import com.yausername.youtubedl_common.SharedPrefsHelper
@@ -227,38 +230,13 @@ object YoutubeDL {
         processId: String?,
         process: Process
     ) {
-
         val pid = processId?.let { idPidMap[it] }
 
         if (pid != null) {
             destroyChildProcesses(pid)
-        }
-
-        process.destroy()
-
-        val deadline = System.currentTimeMillis() + 2000L
-
-        while (System.currentTimeMillis() < deadline) {
-            try {
-                 process.exitValue()
-                return
-            } catch (_: IllegalThreadStateException) {
-                Thread.sleep(50)
-            }
-        }
-
-        if (pid != null) {
-            destroyChildProcesses(pid)
-
-            try {
-                ProcessBuilder(
-                    "/system/bin/kill",
-                    "-KILL",
-                    pid.toString()
-                ).start().waitFor()
-            } catch (e: Exception) {
-                Log.e("YoutubeDL", "Failed to kill lingering process $pid", e)
-            }
+            sendSignal(pid, 9)
+        } else {
+            process.destroy()
         }
     }
 
@@ -298,30 +276,32 @@ object YoutubeDL {
 
     private fun destroyChildProcesses(pid: Int): Boolean {
         return try {
-            val command = """
-            kill_children() {
-                for child in ${'$'}(cat /proc/${'$'}1/task/${'$'}1/children 2>/dev/null); do
-                    kill_children "${'$'}child"
-                    kill -TERM "${'$'}child" 2>/dev/null
+            val executionCommand = """
+            kill_descendants() {
+                for child in ${'$'}(cat "/proc/${'$'}1/task/${'$'}1/children" 2>/dev/null); do
+                    kill_descendants "${'$'}child"
+                    kill -KILL "${'$'}child" 2>/dev/null
                 done
             }
-
-            kill_children $pid
+            kill_descendants $pid
         """.trimIndent()
-
-            ProcessBuilder(
+            val terminator = ProcessBuilder(
                 "/system/bin/sh",
                 "-c",
-                command
-            ).start().waitFor() == 0
+                executionCommand
+            ).start()
+            terminator.waitFor() == 0
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+            Log.e("YoutubeDL", "Child termination interrupted", e)
+            false
         } catch (e: Exception) {
+            Log.e("YoutubeDL", "Failed to terminate descendants of $pid", e)
             false
         }
     }
 
     class CanceledException : Exception()
-
-
     @Throws(YoutubeDLException::class, InterruptedException::class, CanceledException::class)
     fun execute(
         request: YoutubeDLRequest,
